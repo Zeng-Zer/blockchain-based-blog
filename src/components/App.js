@@ -18,8 +18,11 @@ class App extends Component {
       socialNetwork: null,
       postCount: 0,
       posts: [],
-      loading: true
+      loading: true,
     };
+
+    this.createPost = this.createPost.bind(this);
+    this.tipPost = this.tipPost.bind(this);
   }
   render() {
     return (
@@ -77,6 +80,30 @@ class App extends Component {
   async componentWillMount() {
     await this.loadWeb3();
     await this.loadBlockchainData();
+  }
+
+  createPost(content) {
+    this.setState({ loading: true });
+    this.state.socialNetwork.methods.createPost(content)
+      .send({ from: this.state.account }, function(error, transactionHash) {
+        if (error) {
+          alert(error);
+        }
+        this.setState({ loading: false });
+      }.bind(this));
+    // contractAfterCreate.once('receipt', (receipt) => {
+    //     this.setState({ loading: false });
+    //   });
+  }
+
+  tipPost(id, tipAmount) {
+    this.setState({ loading: true});
+    this.state.socialNetwork.methods.tipPost(id).send({from: this.state.account, value: tipAmount}, function(error, transactionHash) {
+      if (error) {
+        alert(error.message);
+      }
+      this.setState({ loading: false });
+    }.bind(this));
   }
 
 }
