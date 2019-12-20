@@ -61,20 +61,25 @@ class App extends Component {
     if (networkData) {
       const socialNetwork = web3.eth.Contract(SocialNetwork.abi, networkData.address);
       this.setState({ socialNetwork });
-      const postCount = await socialNetwork.methods.postCount().call();
-      this.setState({ postCount });
-      // Load Posts
-      for (let i = 0; i < postCount; i++) {
-        const post = await socialNetwork.methods.posts(i).call();
-        this.setState({
-          posts: [...this.state.posts, post]
-        })
-      }
+
+      this.loadData();
 
       this.setState({ loading: false });
     } else {
       window.alert('SocialNetwork contract not deployed to detect network.');
     }
+  }
+
+  async loadData() {
+    const postCount = (await this.state.socialNetwork.methods.postCount().call()).toNumber();
+    this.setState({ postCount });
+    // Load Posts
+    const posts = await Promise.all([...Array(postCount).keys()].map((i) => {
+      return this.state.socialNetwork.methods.posts(i).call();
+    }));
+    this.setState({
+      posts: posts
+    })
   }
 
   async componentWillMount() {
@@ -87,23 +92,45 @@ class App extends Component {
     this.state.socialNetwork.methods.createPost(content)
       .send({ from: this.state.account }, function(error, transactionHash) {
         if (error) {
-          alert(error);
+          alert(error.message);
+          this.setState({ loading: false });
+        } else {
+          this.waitForTransaction(transactionHash, (receipt) => {
+            this.loadData().then(() => {
+              this.setState({ loading: false });
+            });
+          });
         }
-        this.setState({ loading: false });
       }.bind(this));
-    // contractAfterCreate.once('receipt', (receipt) => {
-    //     this.setState({ loading: false });
-    //   });
   }
 
   tipPost(id, tipAmount) {
     this.setState({ loading: true});
-    this.state.socialNetwork.methods.tipPost(id).send({from: this.state.account, value: tipAmount}, function(error, transactionHash) {
-      if (error) {
-        alert(error.message);
+    this.state.socialNetwork.methods.tipPost(id)
+      .send({from: this.state.account, value: tipAmount}, function(error, transactionHash) {
+        if (error) {
+          alert(error.message);
+          this.setState({ loading: false });
+        } else {
+          this.waitForTransaction(transactionHash, (receipt) => {
+            this.loadData().then(() => {
+              this.setState({ loading: false });
+            });
+          });
+        }
+      }.bind(this));
+  }
+
+  waitForTransaction(hash, callback) {
+    window.web3.eth.getTransactionReceipt(hash, (error, receipt) => {
+      if (receipt != null) {
+        if (callback) {
+          callback(receipt);
+        }
+      } else {
+        window.setTimeout(() => { this.waitForTransaction(hash, callback) }, 100);
       }
-      this.setState({ loading: false });
-    }.bind(this));
+    });
   }
 
 }

@@ -24,11 +24,12 @@ contract SocialNetwork {
     );
 
     mapping(uint => Post) public posts;
-    uint public postCount = 0;
 
+    uint public postCount;
     string public name;
 
     constructor() public {
+        postCount = 0;
         name = "Blockchain Based Blog";
     }
 
@@ -36,8 +37,8 @@ contract SocialNetwork {
         require(bytes(_content).length > 0);
 
         posts[postCount] = Post(postCount, _content, 0, msg.sender);
+        postCount += 1;
         emit PostCreated(postCount, _content, 0, msg.sender);
-        postCount++;
     }
 
     function tipPost(uint _id) public payable {
